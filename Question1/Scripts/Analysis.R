@@ -1,20 +1,19 @@
 library(tidyverse)
 library(readxl)
+library(coefplot)
 
 stop.activity <- read_csv("Question1/CleanData/stop_activity_clean.csv")
 acs <- read.csv("Question1/CleanData/acs_clean.csv")
 
-stop.activity.merged <- merge(stop.activity, select(acs, c("GEOID", "B01002_001E", "B02001_002E")), by = "GEOID")
+acs$NativeHawaiian.and.Pacific.Islander
 
-summary(lm(boardings~AFTER_CHANGE + B01002_001E + B02001_002E, stop.activity.merged))
+stop.activity.race <- merge(stop.activity, select(acs, c("GEOID", "White", "AfricanAmerican", "Asian", 
+                                                         "NativeAmerican.or.Alaskan.Native", 
+                                                         "NativeHawaiian.and.Pacific.Islander", 
+                                                         "Other.Race", "Two.or.more.races")), by = "GEOID")
 
-summary(lm(boardings~AFTER_CHANGE, stop.acitivity.merged))
+fit.race <- lm(boardings~AFTER_CHANGE + White + AfricanAmerican + Asian +
+             NativeAmerican.or.Alaskan.Native + NativeHawaiian.and.Pacific.Islander +
+             Other.Race + Two.or.more.races, stop.activity.race)
 
-colnames(stop.sample)
-
-View(stop.activity)
-
-View(acs)
-
-
-colnames(stop.activity.merged)
+summary(fit.race)
