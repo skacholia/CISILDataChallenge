@@ -1,17 +1,20 @@
 library(tidyverse)
 library(readxl)
 
-stop.sample <- read_csv("Question1/CleanData/stop_activity_sample.csv")
-stop.sample$AFTER_CHANGE <- as.factor(stop.sample$AFTER_CHANGE)
-acs <- read.csv("Question1/Data/King_County_ACS_2019_tract.csv")
-acs.key <- read_excel("Question1/Data/ACS_Variables_Selected.xlsx")
+stop.activity <- read_csv("Question1/CleanData/stop_activity_clean.csv")
+acs <- read.csv("Question1/CleanData/acs_clean.csv")
 
-View(acs.key)
+stop.activity.merged <- merge(stop.activity, select(acs, c("GEOID", "B01002_001E", "B02001_002E")), by = "GEOID")
 
-stop.sample.agerace <- merge(stop.sample, select(acs, c("GEOID", "B01002_001E", "B02001_002E")), by = "GEOID")
+summary(lm(boardings~AFTER_CHANGE + B01002_001E + B02001_002E, stop.activity.merged))
 
-summary(lm(PSNGR_BOARDINGS~AFTER_CHANGE + GEOID + B01002_001E + B02001_002E, stop.sample.agerace))
+summary(lm(boardings~AFTER_CHANGE, stop.acitivity.merged))
 
-summary(lm(PSNGR_BOARDINGS~AFTER_CHANGE, stop.sample))
+colnames(stop.sample)
 
-        
+View(stop.activity)
+
+View(acs)
+
+
+colnames(stop.activity.merged)
