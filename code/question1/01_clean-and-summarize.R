@@ -6,11 +6,11 @@
 #' ---
 
 
-library(tidvyerse)
+library(tidyverse)
 library(lubridate)
 
 
-d <- read_csv('apc.csv')
+d <- read_csv('data/raw/question1/apc_detailed_09-01-2020_10-31-2020.csv')
 
 boardings <- d %>%
   mutate(date = as.Date(OPERATION_DATE,
@@ -31,7 +31,8 @@ ggplot(data = boardings,
   labs(x = 'Date',
        y = 'Average Boardings Per Trip') +
   facet_wrap(~day_of_week) +
-  geom_vline(xintercept = as.Date('2020-10-01'))
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed')
 
 # to compare apples with apples, let's isolate the TRIP_IDs that ran every week day for the
 # two weeks before and after the policy change.
@@ -42,7 +43,8 @@ boardings <- d %>%
   mutate(date = as.Date(OPERATION_DATE,
                         format = '%m/%d/%Y'),
          day_of_week = wday(date, label = TRUE)) %>%
-  filter(date >= treatment_date - weeks(2),
+  filter(date >= as.Date('2020-09-19'), # remove rides before the service change
+         date >= treatment_date - weeks(2),
          date <= treatment_date + weeks(2),
          day_of_week %in% c('Mon', 'Tue', 'Wed', 'Thu', 'Fri'))
 
@@ -55,7 +57,7 @@ trips_to_keep <- boardings %>%
 trips <- boardings %>%
   filter(TRIP_ID %in% trips_to_keep$TRIP_ID)
 
-length(unique(trips$TRIP_ID)) # 1,232 unique trip IDs; 25,872 unique trips
+length(unique(trips$TRIP_ID)) # 2460 unique trip IDs; 46,740 unique trips
 
 trips %>%
   group_by(date) %>%
@@ -80,13 +82,13 @@ library(modelsummary)
 
 trips_to_keep <- boardings %>%
   count(TRIP_ID) %>%
-  filter(n >= 19)
+  filter(n >= 17)
 
 trips <- boardings %>%
   filter(TRIP_ID %in% trips_to_keep$TRIP_ID)
 
 
-length(unique(trips$TRIP_ID)) # 3,958 unique trip IDs; 174,563 unique trips
+length(unique(trips$TRIP_ID)) # 5,354 unique trip IDs; 97,775 unique trips
 
 trips$treated <- as.numeric(trips$date >= treatment_date)
 
@@ -95,7 +97,7 @@ twfe <- feols(PSNGR_BOARDINGS ~ treated | TRIP_ID + day_of_week,
 
 summary(twfe) # standard errors clustered at the trip level
 
-# so there were roughly 0.7 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
+# so there were roughly 0.8 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
 
 ggplot(data = trips) +
   geom_histogram(mapping = aes(x=PSNGR_BOARDINGS),
