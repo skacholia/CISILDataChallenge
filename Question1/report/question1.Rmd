@@ -1,0 +1,42 @@
+---
+title: 'CISIL Report: Question 1'
+author: "Joseph T. Ornstein & Suhan Kacholia"
+date: "April 15, 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## Research Design
+
+To ensure that we are comparing ridership for the same services before and after the fare reinstatement, we analyze data at the trip level. Our outcome of interest is the number of boardings per trip, compared before and after the treatment. We conduct separate analyses for weekday and weekend routes, restricting our sample to trips with complete boarding data in the two weeks before and after the treatment.^[King County Transit notes that there were considerable service changes implemented on September 19, 2020.] 
+
+We estimate a model of the following form, where $Y_{it}$ denotes the number of boardings per trip, $\x_{it}$ is a treatment indicator, $\mu_i$ is trip-level fixed effect, and $\gamma_t$ is a day-of-the-week fixed effect:
+
+$$Y_{it} = x_{it}\tau + \mu_i + \gamma_t + \varepsilon_{it} $$
+Standard errors are clustered at the trip-level.
+
+< TODO: I think we're going to keep the same set of trips, but do our analysis at the stop level, for an easier merge with ACS. Cluster standard errors at the stop-level. Also use fepois (Poisson regression with fixed effects for count models. Can use marginaleffects package for estimated effect of treatment>
+
+## Results
+
+TODO: 2020 ACS; stop-level datasets. merge acs.
+
+These estimates suggest that there were `r round(ate, 2)` fewer boardings per trip following the fare reinstatement, equivalent to an X% reduction in ridership for these routes over the subsequent two weeks.
+
+
+### Heterogeneous Treatment Effects
+
+- Socioeconomic group
+- Trains vs. buses
+- Weekends vs. weekdays
+
+## Limitations
+
+Because the fare reinstatement was implemented for every route on the same day, there is no comparison group we can use to estimate the causal effect. This means we cannot eliminate the possibility of time-varying confounders that might have affected ridership during this period. Perhaps ridership was unusually high in the two weeks prior to treatment -- or unusually low in the two weeks post-treatment -- for reasons other than the fare reinstatement. But to gain some confidence in the estimates, we can consider two important observable confounders: rates of COVID-19 and the weather.
+
+<That analysis goes here>
+
+A second limitation of our approach is that we can only estimate short-run effects of the policy change. Because we are only looking a month out, we cannot say, for instance, whether a fare reinstatement would increase ridership in the long-run by helping to improve service quality.
