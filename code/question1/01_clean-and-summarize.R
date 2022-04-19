@@ -12,6 +12,12 @@ library(lubridate)
 
 d <- read_csv('data/raw/question1/apc_detailed_09-01-2020_10-31-2020.csv')
 
+covid <- read_csv('data/clean/covid.csv') %>%
+  select(date = Result_Date,
+         cases = Confirmed_Cases) %>%
+  mutate(date = as.Date(date,
+                        format = '%m/%d/%Y'))
+
 boardings <- d %>%
   mutate(date = as.Date(OPERATION_DATE,
                         format = '%m/%d/%Y'),
@@ -48,6 +54,7 @@ boardings <- d %>%
          date <= treatment_date + weeks(2),
          day_of_week %in% c('Mon', 'Tue', 'Wed', 'Thu', 'Fri'))
 
+
 trips_to_keep <- boardings %>%
   count(TRIP_ID) %>%
   filter(n == max(n))
@@ -73,38 +80,25 @@ trips %>%
              linetype = 'dashed')
 
 
-
-
-# model (NOTE: let's put this in a different script, yeah?)
-library(fixest)
-library(modelsummary)
-
-
-trips_to_keep <- boardings %>%
-  count(TRIP_ID) %>%
-  filter(n >= 17)
-
-trips <- boardings %>%
-  filter(TRIP_ID %in% trips_to_keep$TRIP_ID)
-
-
-length(unique(trips$TRIP_ID)) # 5,354 unique trip IDs; 97,775 unique trips
-
-trips$treated <- as.numeric(trips$date >= treatment_date)
-
-twfe <- feols(PSNGR_BOARDINGS ~ treated | TRIP_ID + day_of_week,
-              data = trips)
-
-summary(twfe) # standard errors clustered at the trip level
-
-# so there were roughly 0.8 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
-
-ggplot(data = trips) +
-  geom_histogram(mapping = aes(x=PSNGR_BOARDINGS),
-                 color = 'black') +
+covid %>%
+  mutate(day_of_week = wday(date, label = TRUE)) %>%
+  filter(day_of_week %in% c('Mon', 'Tue', 'Wed', 'Thu', 'Fri')) %>%
+  filter(date < '2021-03-01') %>%
+  ggplot(mapping = aes(x=date, y=cases)) +
+  geom_point(alpha = 0.3) +
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed') +
+  geom_vline(xintercept = treatment_date - weeks(2)) +
+  geom_vline(xintercept = treatment_date  + weeks(2)) +
   theme_minimal() +
-  labs(x = 'Boardings Per Trip')
+  labs(x='Date', y = 'Confirmed Cases')
 
-mean(trips$PSNGR_BOARDINGS)
 
-# TODO: Overlay new reported cases of COVID
+## Write cleaned data to csv --------------------
+
+boardings %>%
+  select(trip_id = TRIP_ID,
+         date,
+         day_of_week,
+         psngr_boardings = PSNGR_BOARDINGS) %>%
+  write_csv('data/clean/apc.csv')
