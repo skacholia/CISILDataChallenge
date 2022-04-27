@@ -72,7 +72,7 @@ mean(trips$psngr_boardings)
 
 ## 3. Estimate heterogeneous treatment effects at the tract level ------------------
 
-gid <- '53033024200'
+gid <- '53033028403'
 
 ggplot(data = filter(tracts, GEOID == gid),
        mapping = aes(x=date, y=normalized_boardings)) +
@@ -85,4 +85,3 @@ m3 <- feols(normalized_boardings ~ treated + covid_cases +
                 avg_temp + precipitation | day_of_week,
               data = tracts %>% filter(GEOID == gid))
 summary(m3)
-
