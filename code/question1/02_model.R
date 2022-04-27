@@ -1,7 +1,7 @@
 #' ---
 #' title: Estimate treatment effect of fare reinstatement, two-way fixed effects
 #' authors: Joe Ornstein & Suhan Kacholia
-#' date: 20222-04-19
+#' date: 2022-04-27
 #' version: 0.1
 #' ---
 
@@ -14,7 +14,7 @@ library(marginaleffects)
 
 ## 1. load cleaned dataset ------------------------
 
-d <- read_csv('data/clean/apc.csv')
+d <- read_csv('data/clean/trips.csv')
 
 
 trips_to_keep <- d %>%
@@ -34,12 +34,14 @@ trips$treated <- as.numeric(trips$date >= treatment_date)
 
 ## 2. Estimate average treatment effect (ATE) ------------------------------
 
-twfe <- feols(psngr_boardings ~ treated | trip_id + day_of_week,
+twfe <- feols(psngr_boardings ~ treated + covid_cases +
+                avg_temp + precipitation | trip_id + day_of_week,
               data = trips)
 
 summary(twfe) # standard errors clustered at the trip level
 
-twfe_poisson <- fepois(psngr_boardings ~ treated | trip_id + day_of_week,
+twfe_poisson <- fepois(psngr_boardings ~ treated + covid_cases +
+                         avg_temp + precipitation | trip_id + day_of_week,
                        data = trips)
 
 summary(twfe_poisson)
@@ -53,8 +55,8 @@ summary(marginaleffects(twfe_poisson))
 #   na.omit %>%
 #   mean
 
-
-# there were roughly 0.8 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
+# there were roughly 0.6 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
+# that's a roughly 4.5% decrease in ridership
 
 ggplot(data = trips) +
   geom_histogram(mapping = aes(x=psngr_boardings),
