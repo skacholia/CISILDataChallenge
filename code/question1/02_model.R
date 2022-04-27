@@ -31,9 +31,9 @@ length(unique(trips$trip_id)) # 5,354 unique trip IDs; 97,775 unique trips
 treatment_date <- as.Date('2020-10-01')
 trips$treated <- as.numeric(trips$date >= treatment_date)
 
-stops <- read_csv('data/raw/stops.csv')
+tracts <- read_csv('data/clean/tracts.csv')
 
-
+tracts$treated <- as.numeric(tracts$date >= treatment_date)
 
 
 ## 2. Estimate average treatment effect (ATE) ------------------------------
@@ -70,8 +70,19 @@ ggplot(data = trips) +
 
 mean(trips$psngr_boardings)
 
-## 3. Estimate heterogeneous treatment effects -------------------------------
+## 3. Estimate heterogeneous treatment effects at the tract level ------------------
 
+gid <- '53033024200'
 
+ggplot(data = filter(tracts, GEOID == gid),
+       mapping = aes(x=date, y=normalized_boardings)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  geom_vline(xintercept = as.Date('2020-10-01'), linetype = 'dashed') +
+  labs(x='Date', y = 'Boardings Relative to September 21')
 
+m3 <- feols(normalized_boardings ~ treated + covid_cases +
+                avg_temp + precipitation | day_of_week,
+              data = tracts %>% filter(GEOID == gid))
+summary(m3)
 
