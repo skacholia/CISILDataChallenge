@@ -9,9 +9,11 @@
 library(tidyverse)
 library(fixest)
 library(modelsummary)
+library(marginaleffects)
 
 
-# load cleaned dataset
+## 1. load cleaned dataset ------------------------
+
 d <- read_csv('data/clean/apc.csv')
 
 
@@ -29,10 +31,28 @@ length(unique(trips$trip_id)) # 5,354 unique trip IDs; 97,775 unique trips
 treatment_date <- as.Date('2020-10-01')
 trips$treated <- as.numeric(trips$date >= treatment_date)
 
+
+## 2. Estimate average treatment effect (ATE) ------------------------------
+
 twfe <- feols(psngr_boardings ~ treated | trip_id + day_of_week,
               data = trips)
 
 summary(twfe) # standard errors clustered at the trip level
+
+twfe_poisson <- fepois(psngr_boardings ~ treated | trip_id + day_of_week,
+                       data = trips)
+
+summary(twfe_poisson)
+summary(marginaleffects(twfe_poisson))
+
+# note for my own edification: the Average Marginal Effect is computed like this
+# twfe_poisson %>%
+#   marginaleffects %>%
+#   filter(term == 'treated') %>%
+#   pull(dydx) %>%
+#   na.omit %>%
+#   mean
+
 
 # there were roughly 0.8 fewer boardings per trip after the treatment (that's robust to just keeping the trips with all 21 days)
 
@@ -43,5 +63,9 @@ ggplot(data = trips) +
   labs(x = 'Boardings Per Trip')
 
 mean(trips$psngr_boardings)
+
+## 3. Estimate heterogeneous treatment effects -------------------------------
+
+
 
 
