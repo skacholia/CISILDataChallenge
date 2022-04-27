@@ -2,7 +2,7 @@
 #' title: Estimate treatment effect of fare reinstatement, two-way fixed effects
 #' authors: Joe Ornstein & Suhan Kacholia
 #' date: 2022-04-27
-#' version: 0.1
+#' version: 0.2
 #' ---
 
 
@@ -12,7 +12,7 @@ library(modelsummary)
 library(marginaleffects)
 
 
-## 1. load cleaned dataset ------------------------
+## 1. load cleaned datasets ------------------------
 
 d <- read_csv('data/clean/trips.csv')
 
@@ -30,6 +30,10 @@ length(unique(trips$trip_id)) # 5,354 unique trip IDs; 97,775 unique trips
 
 treatment_date <- as.Date('2020-10-01')
 trips$treated <- as.numeric(trips$date >= treatment_date)
+
+stops <- read_csv('data/raw/stops.csv')
+
+
 
 
 ## 2. Estimate average treatment effect (ATE) ------------------------------

@@ -8,11 +8,46 @@
 
 library(tidyverse)
 library(lubridate)
+library(sf)
+library(ggthemes)
 
+# boardings data by trip and by stop
 trips <- read_csv('data/raw/question1/apc_detailed_09-01-2020_10-31-2020.csv')
-
 stops <- read_csv('data/raw/question1/stop_activity_granular_2020-09-01_2020-10-31-001.csv')
 
+# stops shapefile
+shp <- st_read('data/raw/KCM_Stops_Data/kcm_stops.shp') %>%
+  select(stop_id = STOP_ID)
+
+# census tract boundaries
+kctracts <- tigris::tracts(state = 53, county = 033, cb = TRUE, year = 2020) %>%
+  select(GEOID)
+
+# for each stop, get the GEOID of the census tract it falls within:
+shp <- st_transform(shp, crs = st_crs(kctracts))
+shp <- st_join(shp, kctracts, join = st_within)
+
+# tract-level selected variables from ACS
+acs <- read_csv("data/raw/King_County_ACS_2019_tract.csv") %>%
+  select(GEOID,
+         median_age = B01002_001E,
+         population = B01003_001E,
+         white = B02001_002E,
+         median_income = B06011_001E)
+
+
+
+ggplot() +
+  geom_sf(data = kctracts,
+          alpha = 0.3,
+          mapping = aes(fill = median_income)) +
+  geom_sf(data = shp,
+          alpha = 0.1) +
+  coord_sf() +
+  theme_map()
+
+
+# time-varying confounders: covid rates and weather
 covid <- read_csv('data/clean/covid.csv') %>%
   select(date = Result_Date,
          covid_cases = Confirmed_Cases) %>%
@@ -167,3 +202,7 @@ trips_to_keep <- d %>%
 stops %>%
   filter(trip_id %in% trips_to_keep$TRIP_ID) %>%
   write_csv('data/raw/stops.csv')
+
+trips_recomputed <- stops %>%
+  group_by(date, trip_id) %>%
+  summarize(psngr_boardings = sum(psngr_boardings))
