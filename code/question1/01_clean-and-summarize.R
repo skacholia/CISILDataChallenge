@@ -135,6 +135,19 @@ trips <- trips %>%
   left_join(weather, by = 'date')
 
 
+stops <- stops %>%
+  select(date = OPERATION_DATE,
+         trip_id = TRIP_ID,
+         stop_id = STOP_ID,
+         psngr_boardings = PSNGR_BOARDINGS) %>%
+  mutate(date = as.Date(date),
+         day_of_week = wday(date, label = TRUE)) %>%
+  filter(date >= as.Date('2020-09-19'), # remove rides before the service change
+         date >= treatment_date - weeks(2),
+         date <= treatment_date + weeks(2),
+         day_of_week %in% c('Mon', 'Tue', 'Wed', 'Thu', 'Fri'))
+
+
 ## Write cleaned data to csv --------------------
 
 trips %>%
@@ -145,3 +158,12 @@ trips %>%
          covid_cases,
          avg_temp, precipitation) %>%
   write_csv('data/clean/trips.csv')
+
+# keep trips with at least 17 data points
+trips_to_keep <- d %>%
+  count(trip_id) %>%
+  filter(n >= 17)
+
+stops %>%
+  filter(trip_id %in% trips_to_keep$TRIP_ID) %>%
+  write_csv('data/raw/stops.csv')
