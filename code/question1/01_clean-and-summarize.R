@@ -189,11 +189,21 @@ trips <- trips %>%
   left_join(covid, by = 'date') %>%
   left_join(weather, by = 'date') %>%
   select(trip_id = TRIP_ID,
+         first_stop_id = FIRST_STOP_ID,
+         last_stop_id = LAST_STOP_ID,
          date,
          day_of_week,
          psngr_boardings = PSNGR_BOARDINGS,
          covid_cases,
          avg_temp, precipitation)
+
+# merge trips with ACS data at first stop
+trips <- shp %>%
+  as_tibble() %>%
+  select(first_stop_id = stop_id, GEOID) %>%
+  mutate(GEOID = as.numeric(GEOID)) %>%
+  left_join(acs, by = 'GEOID') %>%
+  left_join(trips, ., by = 'first_stop_id')
 
 
 # keep stop-level boarding data for these trips only
