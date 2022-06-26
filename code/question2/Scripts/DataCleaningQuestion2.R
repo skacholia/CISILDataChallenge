@@ -1,5 +1,6 @@
 library(tidyverse)
-registry <- read.csv("Question2/Data/LIFT_registry.csv")
+
+registry <- read_csv("Question2/Data/LIFT_registry.csv")
 boardings <- read.csv("Question2/Data/LIFT_boardings.csv")
 sales <- read.csv("Question2/Data/LIFT_sales.csv")
 boardings_new <- read.csv("Question2/Data/LIFT_boardings_2021-11-01_to_2022-03-06.csv")
