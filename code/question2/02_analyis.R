@@ -20,7 +20,7 @@ d |>
 
 # note the imbalance.
 
-# condition on age and race
+# condition on language and race
 d |>
   filter(is.na(initial_load) | initial_load == 10) |>
   filter(race_desc == 'White') |>
@@ -34,12 +34,11 @@ d |>
 # Entropy balancing, conditioning on age, race, language, and issue date
 d2 <- d |>
   filter(is.na(initial_load) | initial_load == 10) |>
-  mutate(treated = as.numeric(!is.na(initial_load)),
-         race_desc = factor(race_desc))
+  mutate(treated = as.numeric(!is.na(initial_load)))
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # need to dummy encode the factors
-                   X = model.matrix(~ 1 + age + language_spoken,
+                   X = model.matrix(~ 1 + age + + language_spoken,
                                     d2)[,-1])
 
 # merge the weights vector

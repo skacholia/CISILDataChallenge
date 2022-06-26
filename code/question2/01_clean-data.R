@@ -45,7 +45,9 @@ d <- registry |>
     language_spoken == 'English' ~ 'English',
     language_spoken == 'Spanish' ~ 'Spanish',
     language_spoken == 'Chinese' ~ 'Chinese',
-    TRUE ~ 'Other'))
+    TRUE ~ 'Other')) |>
+  mutate(race_desc = factor(race_desc),
+         language_simplified = factor(language_simplified))
 
 
 
