@@ -37,7 +37,15 @@ sales <- read.csv("data/raw/question2/LIFT_sales.csv") |>
 
 # join use and enrollment data with registry
 d <- registry |>
-  left_join(boardings, by = 'card_id')
+  left_join(boardings, by = 'card_id') |>
+  # drop ~5,000 with missing values
+  filter(!is.na(all_boardings),
+         !is.na(language_spoken)) |>
+  mutate(language_simplified = case_when(
+    language_spoken == 'English' ~ 'English',
+    language_spoken == 'Spanish' ~ 'Spanish',
+    language_spoken == 'Chinese' ~ 'Chinese',
+    TRUE ~ 'Other'))
 
 
 
