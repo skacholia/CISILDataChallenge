@@ -45,7 +45,17 @@ boardings <- bind_rows(boardings1, boardings2) |>
   mutate(weekly_boardings = all_boardings / num_weeks)
 
 sales <- read.csv("data/raw/question2/LIFT_sales_2022-04-18.csv") |>
-  clean_names()
+  clean_names() |>
+  mutate(week = as.Date(week)) |>
+  # keep only the sales during the study period
+  filter(week > '2020-10-01')
+
+# compute total sales per card (excluding organizational sales)
+tidy_sales <- sales |>
+  filter(txn_desc %in% c('Day Pass', 'Misc. Pass',
+                         'Monthly Pass', 'Purse')) |>
+  group_by(card_id) |>
+  summarize(total_sales = sum(amount))
 
 # load tract-level selected variables from ACS
 acs <- read_csv("data/raw/King_County_ACS_2019_tract.csv") %>%
@@ -59,9 +69,9 @@ acs <- read_csv("data/raw/King_County_ACS_2019_tract.csv") %>%
 # join use, enrollment, and tract-level data with registry
 d <- registry |>
   left_join(boardings, by = 'card_id') |>
-  # drop ~5,000 with missing values
-  filter(!is.na(all_boardings),
-         !is.na(language_spoken)) |>
+  left_join(tidy_sales, by = 'card_id') |>
+  # drop 52 with missing values on language spoken
+  filter(!is.na(language_spoken)) |>
   mutate(language_simplified = case_when(
     language_spoken == 'English' ~ 'English',
     language_spoken == 'Spanish' ~ 'Spanish',
