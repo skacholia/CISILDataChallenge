@@ -7,14 +7,12 @@
 
 library(tidyverse)
 library(ebal)
-library(MatchIt)
 
 load('data/clean/question2.RData')
 
 d |>
   group_by(initial_load) |>
-  summarize(mean(all_boardings),
-            num_cards = n(),
+  summarize(num_cards = n(),
             pct_white = sum(race_desc == 'White') / n(),
             pct_english = sum(language_spoken == 'English') / n(),
             average_age = mean(age))
@@ -24,8 +22,9 @@ d |>
 # There are too few observations in the other categories, so we'll compare
 # the $10 level with the subsidized annual pass
 
-## Entropy balancing -----
+## Question 2a: do the riders with subsidized passes use transit more? -----
 
+# Entropy Balancing:
 # conditioning on age, race, language,
 # num_weeks, issue date, and
 # tract-level % white, median age, and median income
@@ -33,7 +32,8 @@ d |>
 d2 <- d |>
   filter(initial_load %in% c('10', 'Subsidized Annual Pass')) |>
   mutate(treated = as.numeric(initial_load == 'Subsidized Annual Pass')) |>
-  filter(!is.na(tract_median_income))
+  filter(!is.na(tract_median_income),
+         !is.na(weekly_boardings))
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # dummy encode the factors
@@ -75,8 +75,11 @@ d2 |>
 d2 |>
   group_by(treated) |>
   summarize(tract_median_age = mean(tract_median_age),
-            weighted_median_age = weighted.mean(tract_median_age, weight),
-            tract_median_inc = mean(tract_median_income),
+            tract_median_inc = mean(tract_median_income))
+
+d2 |>
+  group_by(treated) |>
+  summarize(weighted_median_age = weighted.mean(tract_median_age, weight),
             weighted_median_inc = weighted.mean(tract_median_income,
                                                 weight))
 
