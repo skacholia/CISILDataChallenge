@@ -31,16 +31,16 @@ d |>
             average_age = mean(age),
             median_issue_date = median(issue_date))
 
-## Entropy balancing, conditioning on age, race, language, and issue date -----
+## Entropy balancing, conditioning on age, race, language, num_weeks, and issue date -----
 d2 <- d |>
-  filter(initial_load %in% c(10, 15)) |>
-  mutate(treated = as.numeric(initial_load == 15))
-  #filter(is.na(initial_load) | initial_load == 10) |>
-  #mutate(treated = as.numeric(!is.na(initial_load)))
+  # filter(initial_load %in% c(10, 15)) |>
+  # mutate(treated = as.numeric(initial_load == 15))
+  filter(is.na(initial_load) | initial_load == 10) |>
+  mutate(treated = as.numeric(!is.na(initial_load)))
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # need to dummy encode the factors
-                   X = model.matrix(~ 1 + age + race_desc + language_simplified,
+                   X = model.matrix(~ 1 + age + race_desc + language_simplified + num_weeks,
                                     d2)[,-1])
 
 # merge the weights vector
@@ -66,7 +66,10 @@ d2 |>
   group_by(treated) |>
   summarize(pct_english = mean(language_simplified == 'English'),
             weighted_pct_english = weighted.mean(language_simplified == 'English',
-                                                 weight))
+                                                 weight),
+            avg_num_weeks = mean(num_weeks),
+            weighted_avg_num_weeks = weighted.mean(num_weeks,
+                                                   weight))
 
 # now compare transit boardings
 d2 |>
@@ -76,5 +79,9 @@ d2 |>
                                                     weight))
 
 ggplot(data = d2) +
-  geom_histogram(mapping = aes(x=all_boardings)) +
-  facet_wrap(~treated)
+  geom_histogram(mapping = aes(x=weekly_boardings),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Weekly Boardings', y=NULL)
+
