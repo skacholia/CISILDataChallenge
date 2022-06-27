@@ -21,6 +21,8 @@ d |>
 
 # note the imbalance.
 
+# There are too few observations in the other categories, so we'll compare
+# the $10 level with the subsidized annual pass
 
 ## Entropy balancing -----
 
@@ -29,11 +31,9 @@ d |>
 # tract-level % white, median age, and median income
 
 d2 <- d |>
-  # filter(initial_load %in% c(10, 15)) |>
-  # mutate(treated = as.numeric(initial_load == 15))
-  filter(is.na(initial_load) | initial_load == 10) |>
-  filter(!is.na(tract_median_income)) |>
-  mutate(treated = as.numeric(!is.na(initial_load)))
+  filter(initial_load %in% c('10', 'Subsidized Annual Pass')) |>
+  mutate(treated = as.numeric(initial_load == 'Subsidized Annual Pass')) |>
+  filter(!is.na(tract_median_income))
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # dummy encode the factors
@@ -113,29 +113,3 @@ model_ebal <- lm(weekly_boardings ~ treated,
                  weights = weight)
 
 summary(model_ebal)
-
-
-
-## Match on age, race, language, num_weeks, and issue date ------------
-
-d2 <- d |>
-  # filter(initial_load %in% c(10, 15)) |>
-  # mutate(treated = as.numeric(initial_load == 15))
-  filter(is.na(initial_load) | initial_load == 10) |>
-  mutate(treated = as.numeric(!is.na(initial_load)))
-
-matched <- matchit(treated ~ age + race_desc + language_simplified +
-                     issue_date_numeric + num_weeks,
-                   data = d2,
-                   method = "nearest",
-                   distance = "mahalanobis",
-                   replace = TRUE)
-matched
-
-matched_data <- match.data(matched)
-
-model_matched <- lm(weekly_boardings ~ treated,
-                    data = matched_data,
-                    weights = weights)
-
-summary(model_matched)
