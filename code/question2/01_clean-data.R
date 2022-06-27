@@ -18,7 +18,9 @@ registry <- read_csv("data/raw/question2/LIFT_registry.csv") |>
          issue_date = as.Date(date_issued_to_card_holder)) |>
   mutate(duration = as.numeric(expiration_date - issue_date)) |>
   mutate(user_id = str_replace_all(card_id,
-                                   '-.*', ''))
+                                   '-.*', '')) |>
+  # remove cards issued after March 2020 (when fares were suspended)
+  filter(issue_date < '2020-03-01')
 
 boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
   clean_names() |>
@@ -30,7 +32,8 @@ boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
   mutate(all_boardings = rowSums(across(where(is.numeric)))) |>
   # and across all weeks
   group_by(card_id) |>
-  summarize(all_boardings = sum(all_boardings))
+  summarize(all_boardings = sum(all_boardings),
+            num_weeks = n())
 
 sales <- read.csv("data/raw/question2/LIFT_sales.csv") |>
   clean_names()

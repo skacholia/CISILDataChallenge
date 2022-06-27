@@ -31,14 +31,16 @@ d |>
             average_age = mean(age),
             median_issue_date = median(issue_date))
 
-# Entropy balancing, conditioning on age, race, language, and issue date
+## Entropy balancing, conditioning on age, race, language, and issue date -----
 d2 <- d |>
-  filter(is.na(initial_load) | initial_load == 10) |>
-  mutate(treated = as.numeric(!is.na(initial_load)))
+  filter(initial_load %in% c(10, 15)) |>
+  mutate(treated = as.numeric(initial_load == 15))
+  #filter(is.na(initial_load) | initial_load == 10) |>
+  #mutate(treated = as.numeric(!is.na(initial_load)))
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # need to dummy encode the factors
-                   X = model.matrix(~ 1 + age + + language_spoken,
+                   X = model.matrix(~ 1 + age + race_desc + language_simplified,
                                     d2)[,-1])
 
 # merge the weights vector
@@ -59,3 +61,20 @@ d2 |>
             pct_white = mean(race_desc == 'White'),
             weighted_pct_white = weighted.mean(race_desc == 'White',
                                                weight))
+
+d2 |>
+  group_by(treated) |>
+  summarize(pct_english = mean(language_simplified == 'English'),
+            weighted_pct_english = weighted.mean(language_simplified == 'English',
+                                                 weight))
+
+# now compare transit boardings
+d2 |>
+  group_by(treated) |>
+  summarize(mean_boardings = mean(all_boardings),
+            weighted_mean_boardings = weighted.mean(all_boardings,
+                                                    weight))
+
+ggplot(data = d2) +
+  geom_histogram(mapping = aes(x=all_boardings)) +
+  facet_wrap(~treated)
