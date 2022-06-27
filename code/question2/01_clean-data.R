@@ -24,6 +24,8 @@ registry <- read_csv("data/raw/question2/LIFT_registry.csv") |>
 
 boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
   clean_names() |>
+  # remove boardings after March 1, 2020 (fare suspension began that month)
+  filter(week < '2020-03-01') |>
   # replace NAs with zero
   mutate(
     across(community_transit:sound_transit, ~replace_na(.x, 0))
