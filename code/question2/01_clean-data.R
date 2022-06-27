@@ -12,20 +12,26 @@
 library(tidyverse)
 library(janitor)
 
-registry <- read_csv("data/raw/question2/LIFT_registry.csv") |>
+registry <- read_csv("data/raw/question2/LIFT_registry_2022-04-01.csv") |>
   clean_names() |>
-  mutate(expiration_date = as.Date(expiration_date, '%m/%d/%Y'),
-         issue_date = as.Date(date_issued_to_card_holder)) |>
+  mutate(expiration_date = as.Date(expiration, '%m/%d/%Y'),
+         issue_date = as.Date(date_issued)) |>
   mutate(duration = as.numeric(expiration_date - issue_date)) |>
   mutate(user_id = str_replace_all(card_id,
                                    '-.*', '')) |>
-  # remove cards issued after March 2020 (when fares were suspended)
-  filter(issue_date < '2020-03-01')
+  # study period is October 2020 to present (after the fare suspension ended)
+  filter(issue_date > '2020-10-01')
 
-boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
+boardings1 <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
   clean_names() |>
-  # remove boardings after March 1, 2020 (fare suspension began that month)
-  filter(week < '2020-03-01') |>
+  # remove boardings before October 2020 (fare suspension ended that month)
+  filter(week > '2020-10-01')
+
+boardings2 <- read_csv('data/raw/question2/LIFT_boardings_2021-11-01_to_2022-03-06.csv') |>
+  clean_names()
+
+# bind the two datasets and clean up
+boardings <- bind_rows(boardings1, boardings2) |>
   # replace NAs with zero
   mutate(
     across(community_transit:sound_transit, ~replace_na(.x, 0))

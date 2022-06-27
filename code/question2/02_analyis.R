@@ -21,31 +21,27 @@ d |>
 
 # note the imbalance.
 
-# condition on language and race
-d |>
-  filter(is.na(initial_load) | initial_load == 10) |>
-  filter(race_desc == 'White') |>
-  filter(language_spoken == 'English') |>
-  group_by(initial_load) |>
-  summarize(boardings = mean(weekly_boardings),
-            num_cards = n(),
-            average_age = mean(age),
-            median_issue_date = median(issue_date))
 
+## Entropy balancing -----
 
-## Entropy balancing, conditioning on age, race, language, num_weeks, and issue date -----
+# conditioning on age, race, language,
+# num_weeks, issue date, and
+# tract-level % white, median age, and median income
 
 d2 <- d |>
   # filter(initial_load %in% c(10, 15)) |>
   # mutate(treated = as.numeric(initial_load == 15))
   filter(is.na(initial_load) | initial_load == 10) |>
+  filter(!is.na(tract_median_income)) |>
   mutate(treated = as.numeric(!is.na(initial_load)))
 
 eb.out <- ebalance(Treatment = d2$treated,
-                   # need to dummy encode the factors
+                   # dummy encode the factors
                    X = model.matrix(~ 1 + age + race_desc +
                                       language_simplified +
-                                      num_weeks + issue_date_numeric,
+                                      num_weeks + issue_date_numeric +
+                                      tract_white + tract_median_age +
+                                      tract_median_income,
                                     d2)[,-1])
 
 # merge the weights vector
@@ -75,6 +71,14 @@ d2 |>
             avg_num_weeks = mean(num_weeks),
             weighted_avg_num_weeks = weighted.mean(num_weeks,
                                                    weight))
+# tract level variables
+d2 |>
+  group_by(treated) |>
+  summarize(tract_median_age = mean(tract_median_age),
+            weighted_median_age = weighted.mean(tract_median_age, weight),
+            tract_median_inc = mean(tract_median_income),
+            weighted_median_inc = weighted.mean(tract_median_income,
+                                                weight))
 
 # now compare transit boardings
 d2 |>
@@ -96,6 +100,13 @@ ggplot(data = d2) +
   facet_wrap(~initial_load) +
   theme_minimal() +
   labs(x='Issue Date', y=NULL)
+
+ggplot(data = d2) +
+  geom_histogram(mapping = aes(x=tract_median_income),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Tract-Level Median Income', y=NULL)
 
 model_ebal <- lm(weekly_boardings ~ treated,
                  data = d2,
