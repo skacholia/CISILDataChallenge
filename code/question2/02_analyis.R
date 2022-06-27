@@ -71,8 +71,8 @@ d2 |>
 # now compare transit boardings
 d2 |>
   group_by(treated) |>
-  summarize(mean_boardings = mean(all_boardings),
-            weighted_mean_boardings = weighted.mean(all_boardings,
+  summarize(mean_boardings = mean(weekly_boardings),
+            weighted_mean_boardings = weighted.mean(weekly_boardings,
                                                     weight))
 
 ggplot(data = d2) +

@@ -33,7 +33,8 @@ boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
   # and across all weeks
   group_by(card_id) |>
   summarize(all_boardings = sum(all_boardings),
-            num_weeks = n())
+            num_weeks = n()) |>
+  mutate(weekly_boardings = all_boardings / num_weeks)
 
 sales <- read.csv("data/raw/question2/LIFT_sales.csv") |>
   clean_names()
