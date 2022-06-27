@@ -7,6 +7,7 @@
 
 library(tidyverse)
 library(ebal)
+library(MatchIt)
 
 load('data/clean/question2.RData')
 
@@ -31,7 +32,9 @@ d |>
             average_age = mean(age),
             median_issue_date = median(issue_date))
 
+
 ## Entropy balancing, conditioning on age, race, language, num_weeks, and issue date -----
+
 d2 <- d |>
   # filter(initial_load %in% c(10, 15)) |>
   # mutate(treated = as.numeric(initial_load == 15))
@@ -40,7 +43,9 @@ d2 <- d |>
 
 eb.out <- ebalance(Treatment = d2$treated,
                    # need to dummy encode the factors
-                   X = model.matrix(~ 1 + age + race_desc + language_simplified + num_weeks,
+                   X = model.matrix(~ 1 + age + race_desc +
+                                      language_simplified +
+                                      num_weeks + issue_date_numeric,
                                     d2)[,-1])
 
 # merge the weights vector
@@ -85,3 +90,41 @@ ggplot(data = d2) +
   theme_minimal() +
   labs(x='Weekly Boardings', y=NULL)
 
+ggplot(data = d2) +
+  geom_histogram(mapping = aes(x=issue_date),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Issue Date', y=NULL)
+
+model_ebal <- lm(weekly_boardings ~ treated,
+                 data = d2,
+                 weights = weight)
+
+summary(model_ebal)
+
+
+
+## Match on age, race, language, num_weeks, and issue date ------------
+
+d2 <- d |>
+  # filter(initial_load %in% c(10, 15)) |>
+  # mutate(treated = as.numeric(initial_load == 15))
+  filter(is.na(initial_load) | initial_load == 10) |>
+  mutate(treated = as.numeric(!is.na(initial_load)))
+
+matched <- matchit(treated ~ age + race_desc + language_simplified +
+                     issue_date_numeric + num_weeks,
+                   data = d2,
+                   method = "nearest",
+                   distance = "mahalanobis",
+                   replace = TRUE)
+matched
+
+matched_data <- match.data(matched)
+
+model_matched <- lm(weekly_boardings ~ treated,
+                    data = matched_data,
+                    weights = weights)
+
+summary(model_matched)

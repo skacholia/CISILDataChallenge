@@ -41,7 +41,16 @@ boardings <- read_csv("data/raw/question2/LIFT_boardings.csv") |>
 sales <- read.csv("data/raw/question2/LIFT_sales.csv") |>
   clean_names()
 
-# join use and enrollment data with registry
+# load tract-level selected variables from ACS
+acs <- read_csv("data/raw/King_County_ACS_2019_tract.csv") %>%
+  select(tract_fips = GEOID,
+         tract_median_age = B01002_001E,
+         tract_population = B01003_001E,
+         tract_white = B02001_002E,
+         tract_median_income = B06011_001E)
+
+
+# join use, enrollment, and tract-level data with registry
 d <- registry |>
   left_join(boardings, by = 'card_id') |>
   # drop ~5,000 with missing values
@@ -52,8 +61,18 @@ d <- registry |>
     language_spoken == 'Spanish' ~ 'Spanish',
     language_spoken == 'Chinese' ~ 'Chinese',
     TRUE ~ 'Other')) |>
+  # make these factors
   mutate(race_desc = factor(race_desc),
-         language_simplified = factor(language_simplified))
+         language_simplified = factor(language_simplified)) |>
+  # convert issue date to numeric for matching
+  mutate(issue_date_numeric = as.numeric(issue_date - min(issue_date))) |>
+  # join with tract data
+  mutate(
+    tract_fips = fips |>
+      str_sub(1, 11) |>
+      as.numeric()
+    ) |>
+  left_join(acs, by = 'tract_fips')
 
 
 
