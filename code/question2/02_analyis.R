@@ -26,7 +26,7 @@ d |>
   filter(race_desc == 'White') |>
   filter(language_spoken == 'English') |>
   group_by(initial_load) |>
-  summarize(boardings = mean(all_boardings),
+  summarize(boardings = mean(weekly_boardings),
             num_cards = n(),
             average_age = mean(age),
             median_issue_date = median(issue_date))
