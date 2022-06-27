@@ -44,7 +44,7 @@ boardings <- bind_rows(boardings1, boardings2) |>
             num_weeks = n()) |>
   mutate(weekly_boardings = all_boardings / num_weeks)
 
-sales <- read.csv("data/raw/question2/LIFT_sales.csv") |>
+sales <- read.csv("data/raw/question2/LIFT_sales_2022-04-18.csv") |>
   clean_names()
 
 # load tract-level selected variables from ACS

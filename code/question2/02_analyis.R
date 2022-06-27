@@ -108,6 +108,13 @@ ggplot(data = d2) +
   theme_minimal() +
   labs(x='Tract-Level Median Income', y=NULL)
 
+ggplot(data = d2) +
+  geom_histogram(mapping = aes(x=age),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Age', y=NULL)
+
 model_ebal <- lm(weekly_boardings ~ treated,
                  data = d2,
                  weights = weight)
