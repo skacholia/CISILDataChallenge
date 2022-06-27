@@ -90,34 +90,6 @@ d2 |>
             weighted_mean_boardings = weighted.mean(weekly_boardings,
                                                     weight))
 
-ggplot(data = d2) +
-  geom_histogram(mapping = aes(x=weekly_boardings),
-                 color = 'black') +
-  facet_wrap(~initial_load) +
-  theme_minimal() +
-  labs(x='Weekly Boardings', y=NULL)
-
-ggplot(data = d2) +
-  geom_histogram(mapping = aes(x=issue_date),
-                 color = 'black') +
-  facet_wrap(~initial_load) +
-  theme_minimal() +
-  labs(x='Issue Date', y=NULL)
-
-ggplot(data = d2) +
-  geom_histogram(mapping = aes(x=tract_median_income),
-                 color = 'black') +
-  facet_wrap(~initial_load) +
-  theme_minimal() +
-  labs(x='Tract-Level Median Income', y=NULL)
-
-ggplot(data = d2) +
-  geom_histogram(mapping = aes(x=age),
-                 color = 'black') +
-  facet_wrap(~initial_load) +
-  theme_minimal() +
-  labs(x='Age', y=NULL)
-
 model_ebal <- lm(weekly_boardings ~ treated,
                  data = d2,
                  weights = weight)

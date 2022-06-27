@@ -1,0 +1,189 @@
+---
+title: 'CISIL Report: Question 2'
+author: "Joseph T. Ornstein & Suhan Kacholia"
+institution: 'University of Georgia'
+date: "June 26, 2022"
+output: pdf_document
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## Data Challenge Question
+
+How does the level and duration of incentive (i.e., fare subsidy) affect riders' long-term use of and enrollment in low-income transit programs?
+
+## Research Design
+
+We compared transit riders who received a subsidized annual pass with those who received a stored value card. The study period is October 2020 through March 2022, following the reinstatement of fares in the King County Metro system.
+
+Because the assignment of subsidies is not randomized, to estimate their causal effect we must rely on the (somewhat less satisfying) Selection on Observables assumption. We assume that potential outcomes are independent of treatment assignment conditional on the following confounding variables:
+
+-   Date when the card was issued
+-   Age of the cardholder
+-   Race of the cardholder
+-   Language spoken by the cardholder
+-   Median income in cardholder's Census tract
+-   Median age in cardholder's Census tract
+-   Percent white residents in cardholder's Census tract
+
+By matching on these characteristics, we can recover a more credible average treatment effect than a simple comparison of means.
+
+## Supplementary Data
+
+For each card ID, we compute two outcomes: the average weekly number of transit boardings, and the total dollar amount of individual sales (i.e. excluding organizational purchases) during the study period. For the independent variable, there were too few users in treatment conditions other than \$10 stored value and Subsidized Annual Pass, so we focus on those two levels. We also recode the language spoken variable to four levels: English, Spanish, Chinese, and Other. All code and data to replicate our results are available on our GitHub repository.
+
+## Methods
+
+There are several significant covariate imbalances between the treatment and control groups. Riders who received a subsidized annual pass were significantly more likely to be senior citizens, less likely to speak Spanish, and their cards were more likely to be issued around the winter holiday season.
+
+```{r}
+library(tidyverse)
+library(here)
+
+load(here ('data/clean/question2.RData') )
+
+d <- d |> 
+  filter(initial_load %in% c('10', 'Subsidized Annual Pass'))
+
+ggplot(data = d) +
+  geom_histogram(mapping = aes(x=issue_date),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Issue Date', y=NULL)
+
+ggplot(data = d) +
+  geom_histogram(mapping = aes(x=age),
+                 color = 'black') +
+  facet_wrap(~initial_load) +
+  theme_minimal() +
+  labs(x='Age', y=NULL)
+
+d |> 
+  group_by(initial_load) |> 
+  summarize('Percent White' = mean(race_desc == 'White') * 100,
+            'Percent Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100) |> 
+  knitr::kable()
+```
+
+To adjust for these imbalances, we create a matched control group using entropy balancing [@hainmuellerEntropyBalancingCausal2012]. This procedure selects a set of non-zero weights such that the first several statistical moments of the weighted control group's covariates (listed above) are exactly equal those in the treatment group.
+
+```{r ebal, include = FALSE}
+library(ebal)
+
+d2 <- d |>
+  filter(initial_load %in% c('10', 'Subsidized Annual Pass')) |>
+  mutate(treated = as.numeric(initial_load == 'Subsidized Annual Pass')) |>
+  filter(!is.na(tract_median_income),
+         !is.na(weekly_boardings))
+
+eb.out <- ebalance(Treatment = d2$treated,
+                   # dummy encode the factors
+                   X = model.matrix(~ 1 + age + race_desc +
+                                      language_simplified +
+                                      num_weeks + issue_date_numeric +
+                                      tract_white + tract_median_age +
+                                      tract_median_income,
+                                    d2)[,-1])
+
+# merge the weights vector
+control_weights <- d2 |>
+  filter(treated == 0) |>
+  mutate(weight = eb.out$w) |>
+  select(card_id, weight)
+
+d2 <- d2 |>
+  left_join(control_weights, by = 'card_id') |>
+  # treated weights are all 1
+  mutate(weight = replace_na(weight, 1))
+```
+
+Here are the means of a selection of observed variables before and after matching.
+
+```{r}
+treated_group <- d2 |> 
+  filter(initial_load == 'Subsidized Annual Pass') |> 
+  summarize('% White' = mean(race_desc == 'White') * 100,
+            '% Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100,
+            'Mean Age' = mean(age)) |> 
+  pivot_longer(cols = '% White':'Mean Age',
+               names_to = 'Variable',
+               values_to = 'Treated')
+
+control_group_before <- d2 |> 
+  filter(initial_load == '10') |> 
+  summarize('% White' = mean(race_desc == 'White') * 100,
+            '% Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100,
+            'Mean Age' = mean(age)) |> 
+  pivot_longer(cols = '% White':'Mean Age',
+               names_to = 'Variable',
+               values_to = 'Control (Before Matching)')
+
+
+control_group_after <- d2 |> 
+  filter(initial_load == '10') |> 
+  summarize('% White' = weighted.mean((race_desc == 'White') * 100, weight),
+            '% Spanish-Speaking' = weighted.mean((language_simplified == 'Spanish') * 100, weight),
+            'Mean Age' = weighted.mean(age, weight)) |> 
+  pivot_longer(cols = '% White':'Mean Age',
+               names_to = 'Variable',
+               values_to = 'Control (After Matching)')
+
+treated_group |> 
+  left_join(control_group_before) |> 
+  left_join(control_group_after) |> 
+  knitr::kable()
+```
+
+## Findings
+
+```{r, include = FALSE}
+d3 <- d |>
+  filter(initial_load %in% c('10', 'Subsidized Annual Pass')) |>
+  mutate(treated = as.numeric(initial_load == 'Subsidized Annual Pass')) |>
+  filter(!is.na(tract_median_income),
+         !is.na(total_sales))
+
+eb.out <- ebalance(Treatment = d3$treated,
+                   # dummy encode the factors
+                   X = model.matrix(~ 1 + age + race_desc +
+                                      language_simplified +
+                                      issue_date_numeric +
+                                      tract_white + tract_median_age +
+                                      tract_median_income,
+                                    d3)[,-1])
+
+# merge the weights vector
+control_weights <- d3 |>
+  filter(treated == 0) |>
+  mutate(weight = eb.out$w) |>
+  select(card_id, weight)
+
+d3 <- d3 |>
+  left_join(control_weights, by = 'card_id') |>
+  # treated weights are all 1
+  mutate(weight = replace_na(weight, 1))
+
+lm1 <- lm(weekly_boardings ~ treated,
+                 data = d2,
+                 weights = weight)
+
+lm2 <- lm(total_sales ~ treated,
+          data = d3,
+          weights = weight)
+```
+
+After constructing the matched control group, we estimated the Average Treatment Effect on the Treated Group (ATT) using Weighted Least Squares. We find that riders who received a subsidized annual pass boarded transit roughly `r lm1$coefficients['treated'] |> round(2)` more times per week during the study period than riders who only received a \$10 stored value card. These riders also spent \$123 less on passes and card loadings during the study period than the riders who received a \$10 preloaded card (as would be expected, since their pass allowed them to ride fare-free for a year).
+
+```{r}
+library(modelsummary)
+
+modelsummary(models = list('Weekly Boardings' = lm1, 
+                           'Total Sales' = lm2), 
+             gof_omit = "^(?!Num)")
+```
+
+## References
