@@ -123,3 +123,66 @@ model_ebal <- lm(weekly_boardings ~ treated,
                  weights = weight)
 
 summary(model_ebal)
+
+
+## Question 2a: what's the difference in sales between the two groups? -----
+
+# Entropy Balancing:
+# conditioning on age, race, language,
+# num_weeks, issue date, and
+# tract-level % white, median age, and median income
+
+d2 <- d |>
+  filter(initial_load %in% c('10', 'Subsidized Annual Pass')) |>
+  mutate(treated = as.numeric(initial_load == 'Subsidized Annual Pass')) |>
+  filter(!is.na(tract_median_income),
+         !is.na(total_sales))
+
+d2 |> count(treated)
+
+eb.out <- ebalance(Treatment = d2$treated,
+                   # dummy encode the factors
+                   X = model.matrix(~ 1 + age + race_desc +
+                                      language_simplified +
+                                      issue_date_numeric +
+                                      tract_white + tract_median_age +
+                                      tract_median_income,
+                                    d2)[,-1])
+
+# merge the weights vector
+control_weights <- d2 |>
+  filter(treated == 0) |>
+  mutate(weight = eb.out$w) |>
+  select(card_id, weight)
+
+d2 <- d2 |>
+  left_join(control_weights, by = 'card_id') |>
+  # treated weights are all 1
+  mutate(weight = replace_na(weight, 1))
+
+d2 |>
+  group_by(treated) |>
+  summarize(n(),
+            age = mean(age),
+            white = mean(race_desc == 'White'),
+            inc = mean(tract_median_income))
+
+d2 |>
+  group_by(treated) |>
+  summarize(n(),
+            age = weighted.mean(age, weight),
+            white = weighted.mean(race_desc == 'White',
+                                  weight),
+            inc = weighted.mean(tract_median_income,
+                                weight))
+
+
+# now compare total sales
+d2 |>
+  group_by(treated) |>
+  summarize(mean_total_sales = mean(total_sales))
+
+model2 <- lm(total_sales ~ treated,
+             data = d2,
+             weights = weight)
+summary(model2)
