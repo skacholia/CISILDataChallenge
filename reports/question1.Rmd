@@ -1,42 +1,343 @@
 ---
 title: 'CISIL Report: Question 1'
 author: "Joseph T. Ornstein & Suhan Kacholia"
-date: "April 15, 2022"
+institution: University of Georgia
+date: "June 30, 2022"
+header-includes:
+    - \usepackage{setspace}\doublespacing
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+
+library(tidyverse)
+library(fixest)
+library(modelsummary)
+library(marginaleffects)
+library(kableExtra)
+library(gt)
+library(lubridate)
+library(ggthemes)
+library(here)
+
+## 1. load cleaned datasets ------------------------
+
+d <- read_csv( here('data/clean/trips.csv') )
+
+trips_to_keep <- d %>%
+  count(trip_id) %>%
+  filter(n >= 17)
+
+trips <- d %>%
+  filter(trip_id %in% trips_to_keep$trip_id)
+
+
+length(unique(trips$trip_id)) # 5,354 unique trip IDs; 97,775 unique trips
+
+
+treatment_date <- as.Date('2020-10-01')
+trips$treated <- as.numeric(trips$date >= treatment_date)
+
+tracts <- read_csv( here('data/clean/tracts.csv') )
+
+tracts$treated <- as.numeric(tracts$date >= treatment_date)
+
+# time-varying confounders: covid rates and weather
+covid <- read_csv( here('data/clean/covid.csv') ) %>%
+  select(date = Result_Date,
+         covid_cases = Confirmed_Cases) %>%
+  mutate(date = as.Date(date,
+                        format = '%m/%d/%Y'))
+
+weather <- read_csv( here('data/clean/weather.csv') )
 ```
+
+# Introduction
+
+The COVID-19 pandemic had dramatic economic and social impacts on cities and counties across the United States. The pandemic especially affected transportation within cities---some estimates indicate public transit ridership decreased by 73% (Liu, Miller, & Scheff, 2020). In response to the pandemic, many public transit agencies instituted changes to their systems. King County Metro in Washington, which services Seattle and surrounding areas, is one such agency. Between March 21, 2020 until October 1, 2020, King County suspended fares for its transit services to mitigate the transmission of COVID-19. On October 1st, 2020, King County re-introduced fares. Investigating the impact of the suspension and reintroduction of fares on subsequent ridership would shed light upon the general effects of free-fare programs. Determining how the effect on ridership in King County differed based on socioeconomic characteristics provides additional nuance on the effects of fare-free transit.
+
+King County, Washington is the 12th largest county in America, with an estimated population of 2.25 million. It contains the city of Seattle, as well as its surrounding suburbs, including Bellevue, Kirkland, and Kent. However, King County also contains large swaths of rural and forested areas. In King County, 7% identify as Black, 19% identify as Asian, 9.9% identify as Hispanic, and 5.2% identify with two or more races. The median household income of King County is \$99,158, and 7.6% of the population lives below the poverty line. However, this masks substantial heterogeneity in poverty within different areas of King County. The King County Metro, possessing an annual budget of around \$1 billion, thus serves a large, socioeconomically diverse population.
+
+COVID-19 impacted Seattle relatively early in the pandemic, prompting a swift response by the city. On March 11th, Seattle imposed its first COVID-19 restrictions. The pandemic steeply reduced mobility in King County. Based on cellphone data, people in King County visited 57% fewer census block groups (CBGs) between February and April 2020, excluding their homes. The pandemic also impacted public transit ridership, which declined by approximately 74% (Brough, Freedman, & Philips, 2020). This change was heterogeneous: high-income residents shifted to other modes of transportation to a higher degree than low-income residents, though this difference dissipated with time. The ability to work remotely played a large role in this result, while changes in the supply of public transit played a relatively small role.
+
+In response to the pandemic, King County Metro suspended its fares. This fare suspension started on March 21, 2020, and for the duration, all riders did not have to pay to use services provided by King County Metro, including buses, water taxis, and Access paratransit. On October 1, 2020, King County reintroduced fares on the Metro. This fare reintroduction could have impacted the incentives of riders, causing some to use Metro services less, or substitute for other modes of transport. This effect may have differed based on demographic factors - public transit mode substitution is easier for higher-income residents, for example.
+
+In this study, we examine the effects of the reintroduction of fares on ridership on the King County Metro. We study how this difference varies by socioeconomic status, race, and age across different Census tracts within King County.
+
+# Data and Methods
+
+We use data provided by the Causal Inference for Social Impact Lab's Data Challenge, in collaboration with the Center for Advanced Study in the Behavioral Sciences at Stanford University and King County Metro. The data contains automated passenger counts at the stop-level for Metro buses. Passenger counter systems are not installed on every bus, so the data represents a sample of overall system ridership.
+
+We also use demographic information at the Census tract level, using the 2019 American Community Survey. We also include COVID-19 case count data in our model, accessed through the King County COVID-19 data dashboard. Lastly, we include data on average precipitation and temperature for each day of our analysis, accessed through the National Centers for Environmental Information's Climate Data Online service.
 
 ## Research Design
 
-To ensure that we are comparing ridership for the same services before and after the fare reinstatement, we analyze data at the trip level. Our outcome of interest is the number of boardings per trip, compared before and after the treatment. We conduct separate analyses for weekday and weekend routes, restricting our sample to trips with complete boarding data in the two weeks before and after the treatment.^[King County Transit notes that there were considerable service changes implemented on September 19, 2020.] 
+To ensure that we are comparing ridership for the same services before and after the fare reinstatement, we analyze data at the trip level. Our outcome of interest is the number of boardings per trip, compared before and after the treatment. We conduct separate analyses for weekday and weekend routes, restricting our sample to trips with complete boarding data in the two weeks before and after the treatment.[^1]
 
-We estimate a model of the following form, where $Y_{it}$ denotes the number of boardings per trip, $\x_{it}$ is a treatment indicator, $\mu_i$ is trip-level fixed effect, and $\gamma_t$ is a day-of-the-week fixed effect:
-
-$$Y_{it} = x_{it}\tau + \mu_i + \gamma_t + \varepsilon_{it} $$
-Standard errors are clustered at the trip-level.
-
-< TODO: I think we're going to keep the same set of trips, but do our analysis at the stop level, for an easier merge with ACS. Cluster standard errors at the stop-level. Also use fepois (Poisson regression with fixed effects for count models. Can use marginaleffects package for estimated effect of treatment>
-
-## Results
-
-TODO: 2020 ACS; stop-level datasets. merge acs.
-
-These estimates suggest that there were `r round(ate, 2)` fewer boardings per trip following the fare reinstatement, equivalent to an X% reduction in ridership for these routes over the subsequent two weeks.
-
-
-### Heterogeneous Treatment Effects
-
-- Socioeconomic group
-- Trains vs. buses
-- Weekends vs. weekdays
-
-## Limitations
+[^1]: King County notes that there were considerable service changes implemented on September 19, 2020.
 
 Because the fare reinstatement was implemented for every route on the same day, there is no comparison group we can use to estimate the causal effect. This means we cannot eliminate the possibility of time-varying confounders that might have affected ridership during this period. Perhaps ridership was unusually high in the two weeks prior to treatment -- or unusually low in the two weeks post-treatment -- for reasons other than the fare reinstatement. But to gain some confidence in the estimates, we can consider two important observable confounders: rates of COVID-19 and the weather.
 
-<That analysis goes here>
+Below, we display a graph measuring average precipitation in King County, with the two weeks surrounding the treatment date of October 1st marked with a dashed line:
 
-A second limitation of our approach is that we can only estimate short-run effects of the policy change. Because we are only looking a month out, we cannot say, for instance, whether a fare reinstatement would increase ridership in the long-run by helping to improve service quality.
+```{r, echo = FALSE, out.width="70%"}
+weather <- weather %>%
+  mutate(date = as.Date(DATE)) %>%
+  group_by(date) %>%
+  summarize(avg_temp = mean(na.omit(HourlyDryBulbTemperature)),
+            precipitation = sum(na.omit(as.numeric(HourlyPrecipitation))))
+
+ggplot(data = weather,
+         mapping = aes(x=date,y=precipitation)) +
+  geom_point(alpha = 0.6) +
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed') +
+  geom_vline(xintercept = treatment_date - weeks(2)) +
+  geom_vline(xintercept = treatment_date  + weeks(2)) +
+  theme_minimal() +
+
+    labs(x='Date', y='Daily Precipitation')
+```
+
+Rainier days could affect ridership, and there appear to be quite a few of them within the timeframe of the analysis. The two weeks surrounding the change appear more rainy than the weeks outside of the change, but there does not appear a noticeable pattern in precipitation levels between the two weeks on either side of the change themselves. 
+
+
+Next, we display a graph measuring average temperature in the county:
+
+```{r, echo = FALSE, out.width="70%"}
+ggplot(data = weather,
+         mapping = aes(x=date,y=avg_temp)) +
+  geom_point(alpha = 0.6) +
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed') +
+  geom_vline(xintercept = treatment_date - weeks(2)) +
+  geom_vline(xintercept = treatment_date  + weeks(2)) +
+  theme_minimal() +
+  labs(x='Date', y='Average Temperature')
+```
+
+Temperatures steadily decreased between September 15th and October 15th, potentially affecting ridership.
+
+Finally, the following graph displays confirmed COVID cases in King County in the two weeks surrounding the treatment:
+
+```{r, echo = FALSE, out.width="70%"}
+covid %>%
+  mutate(day_of_week = wday(date, label = TRUE)) %>%
+  filter(day_of_week %in% c('Mon', 'Tue', 'Wed', 'Thu', 'Fri')) %>%
+  filter(date < '2021-03-01') %>%
+  ggplot(mapping = aes(x=date, y=covid_cases)) +
+  geom_point(alpha = 0.3) +
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed') +
+  geom_vline(xintercept = treatment_date - weeks(2)) +
+  geom_vline(xintercept = treatment_date  + weeks(2)) +
+  theme_minimal() +
+  labs(x='Date', y = 'Confirmed Cases')
+```
+
+There was a steady increase in cases during the timeframe of our analysis, which also may have impacted ridership. 
+
+To help alleviate concerns about these time-varying confounders, we include them as covariates in a series of fixed effects statistical models. We also include day-of-the-week as a variable, as ridership varies over the course of the week.
+
+With these variables, we estimate a model of the following form, where $Y_{it}$ denotes the number of boardings per trip, $x_{it}$ is a treatment indicator, $\alpha_t$ denotes COVID cases per day, $\beta_t$ denotes the average temperature per day, $\delta_t$ indicates the average precipitation per day, $\mu_i$ is a trip-level fixed effect, and $\gamma_t$ is a day-of-the-week fixed effect:
+
+$$Y_{it} = x_{it}\tau + \alpha_t + \beta_t + \delta_t + \mu_i + \gamma_t + \varepsilon_{it} $$ 
+
+Standard errors are clustered at the trip-level.
+
+# Results
+
+The following is a graph displaying total passenger boardings in the four weeks of our analysis, with the treatment date of October 1st marked by a dashed line:
+
+```{r, echo = FALSE, out.width="70%"}
+trips %>%
+  group_by(date) %>%
+  summarize(total_boardings = sum(psngr_boardings)) %>%
+  ggplot(mapping = aes(x = date,
+                       y = total_boardings)) +
+  geom_point(alpha = 0.5) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = 'Date',
+       y = 'All Boardings') +
+  geom_vline(xintercept = as.Date('2020-10-01'),
+             linetype = 'dashed')
+
+```
+
+On an cursory glance, total boardings seem to decrease in the two weeks following the change. The peak occurs on September 22nd, with around 75,000 boardings, and reaches a minimum on October 12th, with below 66,250 boardings.
+
+To compare ridership on similar services before and after the policy change, we restrict our analysis to 5,354 unique trip IDs which ran buses every day during the four week period. These buses completed a total of 97,775 unique trips during the period of study. We display the distribution of boardings per trip in the following graph:
+
+```{r, echo = FALSE, out.width="70%"}
+ggplot(data = trips) +
+  geom_histogram(mapping = aes(x=psngr_boardings),
+                 color = 'black') +
+  theme_minimal() +
+  labs(x = 'Boardings Per Trip')
+```
+
+The distribution is positively skewed, with a mean of 13.64 boardings per trip and median of 11.04.
+
+To assess how the policy change affected ridership, we first estimate an Ordinary Least Squares regression of the passenger boardings against a dummy variable representing the treatment, the COVID-19 cases for that day, the average temperature for that day, and the precipitation, with trip ID and day of the week as fixed effects. Because ridership is a discrete count variable, we also estimate a Poisson regression using the same variables. The following table reports the coefficient estimates from those models.
+
+```{r, echo = FALSE}
+m1 <- feols(psngr_boardings ~ treated + covid_cases +
+              avg_temp + precipitation | trip_id + day_of_week,
+            data = trips)
+m2 <- fepois(psngr_boardings ~ treated + covid_cases +
+              avg_temp + precipitation | trip_id + day_of_week,
+            data = trips)
+
+labs <- c("treated" = "Treatment", "covid_cases" = "COVID cases", "avg_temp" = "Average Temperature", "precipitation" = "Precipitation")
+
+omit <- "R2 Within|R2 Pseudo|AIC|BIC|Log.Lik.|Std.Errors|FE: trip_id|FE: day_of_week|FE..trip_id|FE..day_of_week"
+
+modelsummary(
+  list('OLS' = m1,
+       'Poisson' = m2), 
+  output = "markdown", 
+  coef_rename = labs, 
+  gof_map = c('nobs', 'rmse'))
+```
+
+Both approaches yield very similar results. The first model  suggests that following the fare reinstatement, there were 0.639 fewer boardings per trip. This is significant at the 99.9% level, and is equivalent to a roughly 4.5% decrease in ridership over the subsequent two weeks. The Poisson model also indicates a significant effect of the fare reintroduction on ridership, with an estimated marginal effect of 0.628 fewer boardings following the change. This is almost identical to the coefficient OLS model, adding confidence to our estimate. It is also equivalent to a roughly 4.5% decrease in ridership over the subsequent two weeks.
+
+## Heterogeneous Treatment Effects
+
+The effect of the fare reintroduction on boardings could differ based on the demographic characteristics of a particular Census tract. We estimate these heterogeneous treatment effects by merging our trip data with demographic information provided by the American Community Survey, and adding the demographic information of the first stop to our model.
+
+### Socioeconomic group
+
+We first estimate the impact of socioeconomic status on boardings. We divide Census tracts into three groups: High Income, Middle Income, and Low Income. Then, we compute the average treatment effect for each of these groups, using an Ordinary Least Squares regression. The resulting table and coefficient graph is displayed below:
+
+```{r, echo = FALSE}
+## 3. Estimate heterogeneous treatment effects by demographics at first stop --------------------
+
+trips_with_acs <- trips %>%
+  filter(!is.na(median_income)) %>%
+  mutate(pct_white = white/population*100)
+
+# estimate average treatment effect at three quantiles of median income
+m3 <- list(
+  'Poorest Third' = feols(psngr_boardings ~ treated + covid_cases +
+                            avg_temp + precipitation | trip_id + day_of_week,
+                          data = filter(trips_with_acs,
+                                        median_income < quantile(trips_with_acs$median_income,
+                                                                 0.33333))),
+  'Middle Third' = feols(psngr_boardings ~ treated + covid_cases +
+                           avg_temp + precipitation | trip_id + day_of_week,
+                         data = filter(trips_with_acs,
+                                       median_income >= quantile(trips_with_acs$median_income,
+                                                                 0.33333),
+                                       median_income < quantile(trips_with_acs$median_income,
+                                                                0.66666))),
+  'Richest Third' = feols(psngr_boardings ~ treated + covid_cases +
+                            avg_temp + precipitation | trip_id + day_of_week,
+                          data = filter(trips_with_acs,
+                                        median_income >= quantile(trips_with_acs$median_income,
+                                                                  0.66666)))
+)
+
+modelsummary(m3, output = "markdown", coef_rename = labs, gof_omit = omit)
+modelplot(m3, coef_map = c('treated'='ATE'))
+```
+
+The fare reinstatement resulted in a 0.425 decrease in boardings for the poorest third of Census tracts, a 0.395 decrease for the middle third, and a 0.701 decrease in the richest third. The largest decrease in ridership thus seemed to occur in the wealthiest neighborhoods. However, the 95% confidence intervals for the coefficient estimates of the three groups overlap, so we cannot conclude that the reduction in boardings differs significantly.
+
+This result might be explained by the comparatively higher degree of transit mode substitution wealthier residents are able to engage in. Having greater access to substitutes like cars or telecommuting, these residents display a greater elasticity with regards to the price of using the King County Metro. 
+
+### Race
+
+Next, we repeat the analysis, but this time using racial demographics. We again divide the data into three groups, this time corresponding to the percent composition of white residents. The results of this analysis is displayed below:
+
+```{r, echo = FALSE}
+# estimate average treatment effect at three quantiles of pct white
+m4 <- list(
+  'Least White' = feols(psngr_boardings ~ treated + covid_cases +
+                          avg_temp + precipitation | trip_id + day_of_week,
+                        data = filter(trips_with_acs,
+                                      pct_white < quantile(trips_with_acs$pct_white,
+                                                           0.33333))),
+  'Middle White' = feols(psngr_boardings ~ treated + covid_cases +
+                          avg_temp + precipitation | trip_id + day_of_week,
+                        data = filter(trips_with_acs,
+                                      pct_white >= quantile(trips_with_acs$pct_white,
+                                                            0.33333),
+                                      pct_white < quantile(trips_with_acs$pct_white,
+                                                           0.66666))),
+  'Most White' = feols(psngr_boardings ~ treated + covid_cases +
+                         avg_temp + precipitation | trip_id + day_of_week,
+                       data = filter(trips_with_acs,
+                                     pct_white >= quantile(trips_with_acs$pct_white,
+                                                           0.66666)))
+)
+
+modelsummary(m4, output = "markdown", coef_rename = labs, gof_omit = omit)
+modelplot(m4, coef_map = c('treated'='ATE'))
+```
+
+This analysis indicates that the least white Census tracts saw a 0.374 reduction in boardings, the middle third white Census tracts saw a 0.544 reduction in boardings, and the most white Census tracts saw a 0.629 reduction in boardings. The whitest Census tracts thus encountered the greatest average reduction in boardings. However, again, the 95% confidence intervals overlap, meaning we cannot conclude there was a significant difference in boardings based on the racial demographics of Census tracts. 
+
+### Age
+
+Lastly, we repeat the analysis based on median age.
+
+```{r, echo = FALSE}
+# estimate average treatment effect at three quantiles of median_age
+m5 <- list(
+  'Youngest' = feols(psngr_boardings ~ treated + covid_cases +
+                          avg_temp + precipitation | trip_id + day_of_week,
+                        data = filter(trips_with_acs,
+                                      median_age < quantile(trips_with_acs$median_age,
+                                                           0.33333))),
+  'Middle' = feols(psngr_boardings ~ treated + covid_cases +
+                          avg_temp + precipitation | trip_id + day_of_week,
+                        data = filter(trips_with_acs,
+                                      median_age >= quantile(trips_with_acs$median_age,
+                                                            0.33333),
+                                      median_age < quantile(trips_with_acs$median_age,
+                                                           0.66666))),
+  'Oldest' = feols(psngr_boardings ~ treated + covid_cases +
+                         avg_temp + precipitation | trip_id + day_of_week,
+                       data = filter(trips_with_acs,
+                                     median_age >= quantile(trips_with_acs$median_age,
+                                                           0.66666)))
+)
+
+modelsummary(m5, output = "markdown", coef_rename = labs, gof_omit = omit)
+modelplot(m5, coef_map = c('treated'='ATE'))
+```
+
+The youngest Census tracts witnessed a 0.265 decrease in boardings, the middle aged Census tracts witnessed a 0.532 reduction in boardings, and the oldest Census tracts witnessed a 0.71 reduction in boardings. The oldest Census tracts encountered the greatest reduction in boardings. Younger residents might have less alternatives, like cars, to substitute for in the event of fare reinstatement. 
+
+In accordance with previous research, we find that some residents display a greater sensitivity to price changes in public transport, likely because of their ability to switch to alternative modes of transport or work from home. The wealthiest, oldest, and whitest Census tracts displayed the largest reduction in boardings. Further  analysis is necessary, however, to determine whether these differences are statistically significant. 
+
+# Limitations
+
+One limitation of our approach is that we can only estimate the short-run elasticity of ridership upon price. Because we are only looking a month out, we cannot say, for instance, whether a fare reinstatement would increase ridership in the long-run by helping to improve service quality. The hetereogenous effects we found between socioeconomic groups might also differ, or even disappear, in the long-run. Previous research, for instance, found that high-income residents shifted disproportionately to cars in the beginning of the pandemic, but converged with lower-income residents in their public transit use later on. Perhaps ridership following fare reintroduction displays a similar pattern. Future research could repeat our analysis, but with a longer timeframe of ridership data, to understand the longer-term effects of fare reinstatement.
+
+Additionally, while we included the most obvious and measurable time-varying confounders of precipitation, temperature, and COVID cases, there is no guarantee we eliminated all confounds. There might be alternative explanations of the decrease in ridership, which we do not include in the models. The fare reinstatement also occured during a global pandemic. This is a unique situation, meaning our results may not necessarily generalize to other time periods. Research on fare suspension and reinstatement outside of the pandemic context could help shed light on the broader dynamics of the policy.
+
+# Conclusion
+
+Fare reinstatement in King County, Washington had a significant effect on ridership. Both OLS and Poisson estimates indicate around a 4.5% decrease in ridership in the weeks following the change. These estimates control for potential confounders like COVID-19 cases, precipitation, temperature, and day of the week.
+
+We find the largest decreases in ridership in the wealthiest, whitest, and oldest terciles of the data. However, these differences might not necessarily be statistically significant. Our results correspond with previous research indicating that wealthier and more educated residents engage in comparatively more public transit mode substitution, such as during the start of the pandemic.
+
+There are a number of limitations in our analysis. We advise caution in generalizing our results to broader public transit policy, as the fare reinstatement occurred in the midst of a pandemic, which is a highly unique situation. Additionally, we only estimate short-run effects of reinstatement. In the long-run, the policy could have different effects, including the heterogeneous treatment effects. Nevertheless, we believe our study presents a relevant and useful result for policymakers and researchers interested in understanding the price elasticity of public transit ridership across groups.
+
+\newpage
+
+# Works Cited
+\setlength{\parindent}{-0.2in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{8pt}
+\noindent
+
+Brough, R., Freedman, M., & Phillips, D. C. (2021). Understanding socioeconomic disparities in travel behavior during the COVID-19 pandemic. *Journal of Regional Science*, 61, pp. 753-774. https://doi.org/10.1111/jors.12527.
+
+Liu, L., Miller, H.J., & Scheff, J. (2020). The impacts of COVID-19 pandemic on public transit demand in the United States. *PLoS ONE*, 15(11). https://doi.org/10.1371/journal.pone.0242476
+
