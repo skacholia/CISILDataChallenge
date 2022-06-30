@@ -1,5 +1,5 @@
 ---
-title: 'CISIL Report: Question 1'
+title: 'CISIL Methods Report: Question 1'
 author: "Joseph T. Ornstein & Suhan Kacholia"
 institution: University of Georgia
 date: "June 30, 2022"

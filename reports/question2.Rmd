@@ -1,5 +1,5 @@
 ---
-title: 'CISIL Report: Question 2'
+title: 'CISIL Methods Report: Question 2'
 author: "Joseph T. Ornstein & Suhan Kacholia"
 institution: 'University of Georgia'
 date: "June 30, 2022"
@@ -17,9 +17,7 @@ How does the level and duration of incentive (i.e., fare subsidy) affect riders'
 
 ## Research Design
 
-We compared transit riders who received a subsidized annual pass with those who received a stored value card. The study period is October 2020 through March 2022, following the reinstatement of fares in the King County Metro system.
-
-Because the assignment of subsidies is not randomized, to estimate their causal effect we must rely on the (somewhat less satisfying) Selection on Observables assumption. We assume that potential outcomes are independent of treatment assignment conditional on the following confounding variables:
+We chose to study the period from October 2020 through March 2022 -- following the reinstatement of fares in the King County Metro system -- comparing transit riders who received a subsidized annual pass with those who received a \$10 stored value card. Because the assignment of subsidies is not randomized, to estimate their causal effect we must rely on the (somewhat less satisfying) Selection on Observables assumption [@rubinEstimatingCausalEffects1974] . We assume that potential outcomes are independent of treatment assignment conditional on the following confounding variables:
 
 -   Date when the card was issued
 -   Age of the cardholder
@@ -33,11 +31,7 @@ By matching on these characteristics, we can recover a more credible average tre
 
 ## Supplementary Data
 
-For each card ID, we compute two outcomes: the average weekly number of transit boardings, and the total dollar amount of individual sales (i.e. excluding organizational purchases) during the study period. For the independent variable, there were too few users in treatment conditions other than \$10 stored value and Subsidized Annual Pass, so we focus on those two levels. We also recode the language spoken variable to four levels: English, Spanish, Chinese, and Other. All code and data to replicate our results are available on our GitHub repository.
-
-## Methods
-
-There are several significant covariate imbalances between the treatment and control groups. Riders who received a subsidized annual pass were significantly more likely to be senior citizens, less likely to speak Spanish, and their cards were more likely to be issued around the winter holiday season.
+For each card ID, we compute two outcomes: the average weekly number of transit boardings, and the total dollar amount of individual sales (i.e. excluding organizational purchases) during the study period. For the independent variable, there were too few users in treatment conditions other than \$10 stored value and Subsidized Annual Pass, so we focus on those two levels.
 
 ```{r}
 library(tidyverse)
@@ -45,6 +39,19 @@ library(here)
 
 load(here ('data/clean/question2.RData') )
 
+d |> 
+  count(initial_load) |> 
+  knitr::kable(col.names = c('Treatment Condition', 'Number of Cards'))
+
+```
+
+We also recode the language spoken variable to four levels: English, Spanish, Chinese, and Other. We made no other changes to the data provided by the Causal Inference for Social Impact Lab's Data Challenge -- all the necessary code to replicate our analysis is available on a public [GitHub repository](https://github.com/skacholia/CISILDataChallenge).
+
+## Methods
+
+There are several significant covariate imbalances between the treatment and control groups. Riders who received a subsidized annual pass were significantly more likely to be senior citizens, less likely to speak Spanish, and their cards were more likely to be issued around the winter holiday season.
+
+```{r}
 d <- d |> 
   filter(initial_load %in% c('10', 'Subsidized Annual Pass'))
 
@@ -66,7 +73,7 @@ d |>
   group_by(initial_load) |> 
   summarize('Percent White' = mean(race_desc == 'White') * 100,
             'Percent Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100) |> 
-  knitr::kable()
+  knitr::kable(col.names = c('Treatment Condition', '% White', '% Spanish-speaking'))
 ```
 
 To adjust for these imbalances, we create a matched control group using entropy balancing [@hainmuellerEntropyBalancingCausal2012]. This procedure selects a set of non-zero weights such that the first several statistical moments of the weighted control group's covariates (listed above) are exactly equal those in the treatment group.
@@ -106,18 +113,18 @@ Here are the means of a selection of observed variables before and after matchin
 ```{r}
 treated_group <- d2 |> 
   filter(initial_load == 'Subsidized Annual Pass') |> 
-  summarize('% White' = mean(race_desc == 'White') * 100,
-            '% Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100,
-            'Mean Age' = mean(age)) |> 
+  summarize('% White' = round(mean(race_desc == 'White') * 100, 2),
+            '% Spanish-Speaking' = round(mean(language_simplified == 'Spanish') * 100, 2),
+            'Mean Age' = round(mean(age), 2)) |> 
   pivot_longer(cols = '% White':'Mean Age',
                names_to = 'Variable',
                values_to = 'Treated')
 
 control_group_before <- d2 |> 
   filter(initial_load == '10') |> 
-  summarize('% White' = mean(race_desc == 'White') * 100,
-            '% Spanish-Speaking' = mean(language_simplified == 'Spanish') * 100,
-            'Mean Age' = mean(age)) |> 
+  summarize('% White' = round(mean(race_desc == 'White') * 100, 2),
+            '% Spanish-Speaking' = round(mean(language_simplified == 'Spanish') * 100, 2),
+            'Mean Age' = round(mean(age), 2)) |> 
   pivot_longer(cols = '% White':'Mean Age',
                names_to = 'Variable',
                values_to = 'Control (Before Matching)')
@@ -125,9 +132,9 @@ control_group_before <- d2 |>
 
 control_group_after <- d2 |> 
   filter(initial_load == '10') |> 
-  summarize('% White' = weighted.mean((race_desc == 'White') * 100, weight),
-            '% Spanish-Speaking' = weighted.mean((language_simplified == 'Spanish') * 100, weight),
-            'Mean Age' = weighted.mean(age, weight)) |> 
+  summarize('% White' = round(weighted.mean((race_desc == 'White') * 100, weight), 2),
+            '% Spanish-Speaking' = round(weighted.mean((language_simplified == 'Spanish') * 100, weight), 2),
+            'Mean Age' = round(weighted.mean(age, weight), 2)) |> 
   pivot_longer(cols = '% White':'Mean Age',
                names_to = 'Variable',
                values_to = 'Control (After Matching)')
@@ -185,5 +192,11 @@ modelsummary(models = list('Weekly Boardings' = lm1,
                            'Total Sales' = lm2), 
              gof_omit = "^(?!Num)")
 ```
+
+## Conclusion
+
+Our study has a number of important limitations. Because data does not come from a randomized control trial, it is difficult to make conclusive claims about the causality of different subsidy types. The type of riders who received annual subsidized passes differed in important respects to those who did not. While we try to control for this the best we can, the results from the randomized control trial (conducted separately) may better establish the relationship between type of subsidy and ridership. We also only study two types of subsidy, as the other levels lack sufficient data after the reinstatement of fares in October 2020. Lastly, the study duration was in the midst of a global pandemic. This limits how applicable the data might be to other, more typical time periods.
+
+Despite these limitations, our results provide some evidence that more generous subsidies encourage ridership over an extended period of time (a year and a half). This ridership increase occurs while simultaneously reducing the amount the subsidized pass holders spend on transit services. Short of eliminating fares (the subject of Research Qusetion 1), such annual pass subsidies are a promising route towards increasing ridership and improving equity.
 
 ## References
