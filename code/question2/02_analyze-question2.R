@@ -148,7 +148,6 @@ d2 |>
             inc = weighted.mean(tract_median_income,
                                 weight))
 
-
 # now compare total sales
 d2 |>
   group_by(treated) |>

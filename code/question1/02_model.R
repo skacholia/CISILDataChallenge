@@ -151,21 +151,3 @@ m5 <- list(
 
 modelsummary(m5)
 modelplot(m5, coef_map = c('treated'='ATE'))
-
-## 4. Estimate heterogeneous treatment effects at the tract level ------------------
-
-## IN PROGRESS..............
-
-gid <- '53033028403'
-
-ggplot(data = filter(tracts, GEOID == gid),
-       mapping = aes(x=date, y=normalized_boardings)) +
-  geom_point(alpha = 0.5) +
-  theme_minimal() +
-  geom_vline(xintercept = as.Date('2020-10-01'), linetype = 'dashed') +
-  labs(x='Date', y = 'Boardings Relative to September 21')
-
-m3 <- feols(normalized_boardings ~ treated + covid_cases +
-                avg_temp + precipitation | day_of_week,
-              data = tracts %>% filter(GEOID == gid))
-summary(m3)
